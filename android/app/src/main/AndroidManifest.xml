@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -16,7 +16,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.RSSPublicSchool"
+        android:theme="@style/Theme.StarKidsPublicSchool"
         android:usesCleartextTraffic="true"
         android:hardwareAccelerated="true">
 
@@ -35,7 +35,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="rss-black-gamma.vercel.app" />
+                <data android:scheme="https" android:host="starkids.vercel.app" />
             </intent-filter>
         </activity>
     </application>

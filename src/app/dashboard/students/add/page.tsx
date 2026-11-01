@@ -722,7 +722,7 @@ export default function AddStudentPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             {tenant?.logo && <img src={tenant.logo} alt="Logo" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />}
                             <div>
-                                <h1 style={{ margin: '0', fontSize: '26px', color: '#0f3d26', textTransform: 'uppercase' }}>{tenant?.name || 'RSS PUBLIC SCHOOL'}</h1>
+                                <h1 style={{ margin: '0', fontSize: '26px', color: '#0f3d26', textTransform: 'uppercase' }}>{tenant?.name || 'STAR KIDS PUBLIC SCHOOL'}</h1>
                                 <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#444' }}>{tenant?.address || 'Ayodhya Nagari, Gwalior (MP)'}</p>
                                 <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#444' }}>Phone: {tenant?.phone || '917489315077'} | Email: {tenant?.email || 'rsspublic1979@gmail.com'}</p>
                             </div>

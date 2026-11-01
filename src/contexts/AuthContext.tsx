@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
-        // Support both scalevo_ (new) and udba_ (legacy) keys for smooth migration
+        // Auth keys (starkids_)
         const storedToken = localStorage.getItem('starkids_token') || localStorage.getItem('starkids_token')
         const storedUser = localStorage.getItem('starkids_user') || localStorage.getItem('starkids_user')
         const storedTenant = localStorage.getItem('starkids_tenant') || localStorage.getItem('starkids_tenant')

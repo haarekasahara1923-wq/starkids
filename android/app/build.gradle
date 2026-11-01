@@ -1,13 +1,13 @@
-plugins {
+﻿plugins {
     id 'com.android.application'
 }
 
 android {
-    namespace 'com.rssschools.app'
+    namespace 'com.starkids.school'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.rssschools.app"
+        applicationId "com.starkids.school"
         minSdk 24
         targetSdk 36
         versionCode 2
@@ -19,9 +19,9 @@ android {
     signingConfigs {
         release {
             storeFile file("release-key.jks")
-            storePassword "rsspublic123"
-            keyAlias "rsspublic"
-            keyPassword "rsspublic123"
+            storePassword "starkids123"
+            keyAlias "starkids"
+            keyPassword "starkids123"
         }
     }
 

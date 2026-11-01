@@ -1,4 +1,4 @@
-package com.rssschools.app;
+﻿package com.starkids.school;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
@@ -24,7 +24,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String APP_URL = "https://rss-black-gamma.vercel.app/dashboard";
+    private static final String APP_URL = "https://starkids.vercel.app/dashboard";
 
     private WebView webView;
     private SwipeRefreshLayout swipeRefresh;
@@ -99,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
 
-        String customUserAgent = settings.getUserAgentString() + " RSSPublicSchoolApp/1.0 (Android)";
+        String customUserAgent = settings.getUserAgentString() + " StarKidsPublicSchoolApp/1.0 (Android)";
         settings.setUserAgentString(customUserAgent);
 
         webView.setWebViewClient(new WebViewClient() {

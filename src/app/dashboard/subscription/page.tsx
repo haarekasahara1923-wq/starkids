@@ -38,7 +38,7 @@ export default function SubscriptionPage() {
                     key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                     amount: data.amount,
                     currency: data.currency,
-                    name: 'UDBA',
+                    name: 'STAR KIDS',
                     description: `Upgrade to ${planName} Plan`,
                     order_id: data.orderId,
                     handler: async function (response: any) {

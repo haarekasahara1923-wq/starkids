@@ -870,7 +870,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 }
 
 export function FeatureGate({ feature, children }: { feature: keyof PlanFeatures, children: React.ReactNode }) {
-    // Feature gating disabled for UDBA
+    // Feature gating disabled for STAR KIDS
     return <>{children}</>
 }
 

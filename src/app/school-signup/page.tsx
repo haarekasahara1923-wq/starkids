@@ -76,7 +76,7 @@ export default function SchoolSignupPage() {
         return
       }
 
-      // Store in localStorage with scalevo_ prefix
+      // Store in localStorage with starkids_ prefix
       localStorage.setItem('starkids_token', data.accessToken)
       localStorage.setItem('starkids_user', JSON.stringify(data.user))
       localStorage.setItem('starkids_tenant', JSON.stringify(data.tenant))
@@ -167,7 +167,7 @@ export default function SchoolSignupPage() {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', margin: '0 auto 14px', boxShadow: '0 8px 32px rgba(139,92,246,0.4)' }}>🏫</div>
-          <div style={{ fontSize: '11px', fontWeight: '700', color: '#a78bfa', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>RSS PUBLIC SCHOOL</div>
+          <div style={{ fontSize: '11px', fontWeight: '700', color: '#a78bfa', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>STAR KIDS PUBLIC SCHOOL</div>
           <h1 style={{ fontSize: '24px', fontWeight: '900', color: 'white', lineHeight: 1.2, marginBottom: '8px' }}>
             School Portal Setup
           </h1>

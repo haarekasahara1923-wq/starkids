@@ -48,7 +48,7 @@ export default function ReportsPage() {
         new Date(p.createdAt).toLocaleDateString('en-IN')
       ])
     })
-    downloadCSV(`udba-fee-report-${timestamp}.csv`, rows)
+    downloadCSV(`starkids-fee-report-${timestamp}.csv`, rows)
   }
 
   const handleDownloadFeePDF = () => {
@@ -102,7 +102,7 @@ export default function ReportsPage() {
         new Date(r.date).toLocaleDateString('en-IN'),
       ])
     })
-    downloadCSV(`udba-attendance-report-${timestamp}.csv`, rows)
+    downloadCSV(`starkids-attendance-report-${timestamp}.csv`, rows)
   }
 
   const handleDownloadAttendancePDF = () => {
@@ -160,7 +160,7 @@ export default function ReportsPage() {
         s.status,
       ])
     })
-    downloadCSV(`udba-students-report-${timestamp}.csv`, rows)
+    downloadCSV(`starkids-students-report-${timestamp}.csv`, rows)
   }
 
   const handleDownloadStudentsPDF = () => {

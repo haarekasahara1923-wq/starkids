@@ -73,7 +73,7 @@ export default function DooperLoginPage() {
             boxShadow: '0 12px 40px rgba(220,38,38,0.4)',
           }}>👁️</div>
           <div style={{ fontSize: '11px', fontWeight: '700', color: '#f87171', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '8px' }}>
-            RSS PUBLIC SCHOOL
+            STAR KIDS PUBLIC SCHOOL
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: '900', color: 'white' }}>Super Admin Panel</h1>
           <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px', marginTop: '6px' }}>
