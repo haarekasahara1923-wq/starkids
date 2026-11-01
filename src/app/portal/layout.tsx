@@ -19,8 +19,8 @@ function PortalShell({ children }: { children: React.ReactNode }) {
         .then(async (reg) => {
           console.log('Service Worker Registered')
           let sub = await reg.pushManager.getSubscription()
-          if (!sub) {
-            const pubKey = process.env.NEXT_PUBLIC_VAPID_KEY || 'BFG54n2XjD6u05w21Zsz2g5p7fR9n...'
+          const pubKey = process.env.NEXT_PUBLIC_VAPID_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+          if (!sub && pubKey && !pubKey.includes('...')) {
             const padding = '='.repeat((4 - pubKey.length % 4) % 4)
             const base64 = (pubKey + padding).replace(/\-/g, '+').replace(/_/g, '/')
             const rawData = window.atob(base64)

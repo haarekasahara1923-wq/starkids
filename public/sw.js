@@ -3,8 +3,8 @@ self.addEventListener('push', function(event) {
     const data = JSON.parse(event.data.text());
     const options = {
       body: data.body,
-      icon: '/vercel.svg', // Placeholder icon
-      badge: '/vercel.svg',
+      icon: '/logo.png',
+      badge: '/logo.png',
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),
