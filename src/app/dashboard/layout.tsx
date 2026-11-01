@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -182,12 +182,12 @@ function DashboardSidebar({ open, onClose }: { open: boolean; onClose: () => voi
                     </button>
                 </div>
 
-                {/* Mobile Drawer Branch Switcher for Super Admin */}
-                {isSuperAdmin && token && (
+                {/* Mobile Drawer Branch Switcher — HIDDEN: single-tenant app */}
+                {/* {isSuperAdmin && token && (
                     <div className="hide-desktop" style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'rgba(139,92,246,0.06)' }}>
                         <SuperAdminSwitcher token={token} isDrawer={true} onSwitched={onClose} />
                     </div>
-                )}
+                )} */}
 
                 {/* Nav */}
                 <nav className="sidebar-nav" style={{ paddingBottom: '20px' }}>
@@ -283,7 +283,8 @@ function SuperAdminSwitcher({ token, isDrawer = false, onSwitched }: { token: st
         setOpen(false)
     }
 
-    if (superAdmins.length === 0) return null
+    // Single-tenant app: hide switcher always (no multi-tenant support)
+    if (superAdmins.length <= 1) return null
 
     const currentAdmin = superAdmins.find(a => a.id === user?.id)
     const currentBranchName = currentAdmin?.tenant?.name?.replace(/^(STAR KIDS Public School|School)\s*[-:]?\s*/i, '') || currentAdmin?.tenant?.name || currentAdmin?.name || 'Branch'
@@ -576,10 +577,10 @@ function DashboardHeader({ onMenuClick, onAiOpen }: { onMenuClick: () => void; o
                     Live
                 </div>
 
-                {/* Super Admin Switcher — visible on BOTH desktop & mobile */}
-                {user?.role === 'SUPER_ADMIN' && token && (
+                {/* Super Admin Switcher — HIDDEN: single-tenant app, no multi-tenant switching needed */}
+                {/* {user?.role === 'SUPER_ADMIN' && token && (
                     <SuperAdminSwitcher token={token} />
-                )}
+                )} */}
 
                 <Link href="/dashboard/notices" style={{ position: 'relative', textDecoration: 'none' }}>
                     <div className="bell-icon" style={{ width: '36px', height: '36px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '15px' }}>
