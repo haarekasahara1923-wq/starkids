@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
@@ -76,6 +76,7 @@ export default function AddStudentPage() {
     const [showDocModal, setShowDocModal] = useState(false)
     const [scholarDuplicateError, setScholarDuplicateError] = useState<string | null>(null)
     const [isCheckingScholar, setIsCheckingScholar] = useState(false)
+    const [duplicatePopup, setDuplicatePopup] = useState<{ visible: boolean; scholarNo?: string; student?: { fullName: string; courseName: string; batchName?: string } } | null>(null)
 
     const [form, setForm] = useState({
         scholarNo: '', fullName: '', fatherName: '', motherName: '', phone: '', parentPhone: '',
@@ -108,7 +109,15 @@ export default function AddStudentPage() {
                 if (match) {
                     const msg = `Scholar No. "${val}" pehle se student "${match.fullName}" (${match.courseName || 'Class N/A'}) ke naam par registered hai.`
                     setScholarDuplicateError(msg)
-                    alert(`⚠️ DUPLICATE ENTRY ALERT!\n\nScholar No. "${val}" pehle se database me registered hai!\n\n👤 Student: ${match.fullName}\n🏫 Class: ${match.courseName || 'N/A'}\n\nDuplicate student database me save nahi ho sakta. Kripya naya Scholar No. enter karein.`)
+                    setDuplicatePopup({
+                        visible: true,
+                        scholarNo: val,
+                        student: {
+                            fullName: match.fullName,
+                            courseName: match.courseName || 'N/A',
+                            batchName: match.batchName || ''
+                        }
+                    })
                     setIsCheckingScholar(false)
                     return true
                 }
@@ -186,7 +195,7 @@ export default function AddStudentPage() {
 
         const trimmedScholar = form.scholarNo?.trim()
         if (!trimmedScholar) {
-            alert('⚠️ Scholar No. is required!')
+            setToast('⚠️ Scholar No. is required!')
             return
         }
 
@@ -228,9 +237,17 @@ export default function AddStudentPage() {
                 handleUnauthorized()
             } else {
                 if (data.duplicate || data.error?.toLowerCase().includes('duplicate') || data.error?.toLowerCase().includes('already exists') || data.error?.toLowerCase().includes('scholar no') || data.error === 'student added previously') {
-                    alert(`⚠️ DUPLICATE ENTRY ALERT!\n\n${data.error || 'Student with this Scholar No. already exists in database.'}\n\nDuplicate student database me save nahi kiya gaya.`);
+                    setDuplicatePopup({
+                        visible: true,
+                        scholarNo: trimmedScholar,
+                        student: data.duplicateStudent ? {
+                            fullName: data.duplicateStudent.fullName,
+                            courseName: data.duplicateStudent.courseName || 'N/A',
+                            batchName: data.duplicateStudent.batchName || ''
+                        } : undefined
+                    })
                 } else {
-                    alert(`⚠️ Error: ${data.error || 'Failed to add student'}`)
+                    setToast(data.error || 'Failed to add student')
                 }
                 setToast(data.error || 'Failed to add student')
             }
@@ -294,6 +311,51 @@ export default function AddStudentPage() {
     return (
         <div>
             <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" strategy="lazyOnload" onLoad={() => setIsPdfReady(true)} />
+
+            {/* ===== Duplicate Scholar Popup Modal ===== */}
+            {duplicatePopup?.visible && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                    <div style={{ background: 'var(--surface)', borderRadius: '16px', padding: '32px 28px', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', border: '1px solid rgba(239,68,68,0.4)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>⛔</div>
+                        <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#ef4444', marginBottom: '8px' }}>Duplicate Entry!</h2>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+                            Scholar No. <strong style={{ color: 'var(--text)' }}>&quot;{duplicatePopup.scholarNo}&quot;</strong> pehle se database me registered hai.
+                        </p>
+                        {duplicatePopup.student && (
+                            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '16px', marginBottom: '20px', textAlign: 'left' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                    <span>👤</span>
+                                    <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>{duplicatePopup.student.fullName}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                    <span>🏫</span>
+                                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                                        Class: <strong>{duplicatePopup.student.courseName}</strong>
+                                        {duplicatePopup.student.batchName ? ` — Section: ${duplicatePopup.student.batchName}` : ''}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span>🔢</span>
+                                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Scholar No.: <strong>{duplicatePopup.scholarNo}</strong></span>
+                                </div>
+                            </div>
+                        )}
+                        <p style={{ fontSize: '13px', color: '#f59e0b', fontWeight: '600', marginBottom: '24px' }}>
+                            ⚠️ Kripya alag Scholar No. enter karein. Duplicate student save nahi hoga.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDuplicatePopup(null)
+                                setScholarDuplicateError(null)
+                            }}
+                            style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '10px', padding: '12px 32px', fontWeight: '700', fontSize: '15px', cursor: 'pointer', width: '100%' }}
+                        >
+                            ✓ Samajh Gaya — OK
+                        </button>
+                    </div>
+                </div>
+            )}
             <div className="page-header">
                 <div>
                     <h1 className="page-title">➕ Add New Student</h1>

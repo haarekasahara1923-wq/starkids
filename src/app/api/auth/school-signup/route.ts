@@ -49,16 +49,28 @@ export async function POST(req: NextRequest) {
         const { schoolName, schoolAddress, schoolPhone, schoolEmail, directorName, directorPhone, directorEmail, email, password } = body
 
         if (!schoolName || !directorName || !email || !password) {
-            return NextResponse.json({ error: 'School name, director name, email and password are required' }, { status: 400 })
+            return NextResponse.json({ error: 'School name, director name, email / mobile no., and password are required' }, { status: 400 })
         }
 
         if (password.length < 6) {
             return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
         }
 
-        const existingUser = await prisma.user.findFirst({ where: { email: email.toLowerCase() } })
+        // Support signup with either Email OR Mobile No.
+        const isRealEmail = email.includes('@')
+        const resolvedEmail = isRealEmail ? email.toLowerCase() : `${email.trim()}@starkids.local`
+        const resolvedPhone = directorPhone || (!isRealEmail ? email.trim() : null)
+
+        const existingUser = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: resolvedEmail },
+                    ...(resolvedPhone ? [{ phone: resolvedPhone }] : []),
+                ]
+            }
+        })
         if (existingUser) {
-            return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 })
+            return NextResponse.json({ error: 'An account with this email/mobile already exists' }, { status: 409 })
         }
 
         // Single Tenant Restriction: Only 1 school tenant is allowed on this platform
@@ -88,20 +100,20 @@ export async function POST(req: NextRequest) {
                     slug,
                     schoolCode,
                     address: schoolAddress || null,
-                    phone: schoolPhone || null,
-                    email: schoolEmail || null,
+                    phone: schoolPhone || resolvedPhone || null,
+                    email: schoolEmail || (isRealEmail ? resolvedEmail : null),
                     isActive: true,
                     directorName,
-                    directorPhone: directorPhone || null,
-                    directorEmail: directorEmail || email,
+                    directorPhone: resolvedPhone || null,
+                    directorEmail: directorEmail || (isRealEmail ? resolvedEmail : null),
                 }
             })
 
             const user = await tx.user.create({
                 data: {
                     tenantId: tenant.id,
-                    email: email.toLowerCase(),
-                    phone: directorPhone || null,
+                    email: resolvedEmail,
+                    phone: resolvedPhone || null,
                     password: hashedPassword,
                     plainPassword: password,
                     name: directorName,
@@ -129,7 +141,8 @@ export async function POST(req: NextRequest) {
             userId: result.user.id,
             tenantId: result.tenant.id,
             role: 'SUPER_ADMIN',
-            email: email.toLowerCase(),
+            email: result.user.email,
+            phone: result.user.phone || null,
         }
 
         const accessToken = signAccessToken(payload)
@@ -144,6 +157,7 @@ export async function POST(req: NextRequest) {
                 id: result.user.id,
                 name: result.user.name,
                 email: result.user.email,
+                phone: result.user.phone || null,
                 role: 'SUPER_ADMIN',
                 tenantId: result.tenant.id,
             },

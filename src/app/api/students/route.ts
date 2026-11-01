@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 import { requireAuth, requireWriteAccess, checkPlanLimit } from '@/app/api/middleware'
 import { prisma } from '@/lib/prisma'
@@ -155,6 +155,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ 
                 success: false,
                 duplicate: true,
+                duplicateStudent: {
+                    fullName: existingStudentByScholar.fullName,
+                    scholarNo: trimmedScholarNo,
+                    courseName: existingStudentByScholar.course?.name || 'N/A',
+                    batchName: existingStudentByScholar.batch?.name || ''
+                },
                 error: `Duplicate Entry! Scholar No. "${trimmedScholarNo}" already exists for student "${existingStudentByScholar.fullName}"${classText}. Duplicate student database me save nahi ho sakta.` 
             }, { status: 400 });
         }
@@ -191,7 +197,7 @@ export async function POST(req: NextRequest) {
             data: {
                 tenantId: user!.tenantId,
                 courseId,
-                batchId: batchId ? batchId : undefined,
+                batchId: (batchId && batchId !== "none" && batchId !== "all") ? batchId : undefined,
                 studentId: `STU${String(currentCount + 1).padStart(3, '0')}`,
                 fullName: trimmedFullName,
                 fatherName: trimmedFatherName,
