@@ -41,6 +41,7 @@ interface AuthContextType {
     login: (email: string, password: string, role?: string, tenantId?: string) => Promise<{ success: boolean; error?: string }>
     logout: () => void
     handleUnauthorized: () => void
+    updateTenant: (updatedTenant: Tenant) => void
     isLoading: boolean
 }
 
@@ -118,7 +119,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.location.href = '/login'
     }
 
-    // Call this when any API returns 401 — clears stale token and redirects to login
+
+    // updateTenant: Call this after School Profile save â€” updates logo/name everywhere instantly
+    const updateTenant = (updatedTenant: Tenant) => {
+        setTenant(updatedTenant)
+        localStorage.setItem('starkids_tenant', JSON.stringify(updatedTenant))
+    }
+
+        // Call this when any API returns 401 Ã¢â‚¬â€ clears stale token and redirects to login
     const handleUnauthorized = () => {
         setUser(null)
         setTenant(null)
@@ -138,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, tenant, subscription, token, login, logout, handleUnauthorized, isLoading }}>
+        <AuthContext.Provider value={{ user, tenant, subscription, token, login, logout, handleUnauthorized, updateTenant, isLoading }}>
             {children}
         </AuthContext.Provider>
     )
@@ -167,3 +175,5 @@ export function useApi() {
 
     return { fetcher }
 }
+
+

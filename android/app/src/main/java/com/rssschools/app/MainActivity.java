@@ -1,4 +1,4 @@
-﻿package com.starkids.school;
+package com.starkids.school;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
