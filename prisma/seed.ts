@@ -68,7 +68,7 @@ async function main() {
   console.log('Subscription OK')
   await pool.end()
   console.log('')
-  console.log('=== UDBA SEED COMPLETE ===')
+  console.log('=== STAR KIDS SEED COMPLETE ===')
   console.log('superadmin@starkids.school / starkids@super2026')
   console.log('admin@starkids.school / starkids@admin2026')
   console.log('teacher@starkids.school / teacher@starkids2026')
