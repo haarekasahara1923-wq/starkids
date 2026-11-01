@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hashPassword, signAccessToken, signRefreshToken } from '@/lib/auth'
 
@@ -24,6 +24,25 @@ async function generateUniqueSchoolCode(): Promise<string> {
     return code
 }
 
+// GET: Check if school signup is allowed (Single Tenant check)
+export async function GET() {
+    try {
+        const totalSchools = await prisma.tenant.count()
+        const isAllowed = totalSchools < 1
+        return NextResponse.json({
+            allowed: isAllowed,
+            count: totalSchools,
+            limit: 1,
+            message: !isAllowed
+                ? 'Sign Up Denied: Only one single school tenant is permitted on this platform. Second tenant registration is not permitted.'
+                : 'Registration available'
+        })
+    } catch (error) {
+        console.error('School signup check error:', error)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json()
@@ -42,12 +61,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 })
         }
 
-        // STAR KIDS Public School restriction: max 2 schools (super admins) can be registered
+        // Single Tenant Restriction: Only 1 school tenant is allowed on this platform
         const totalSchools = await prisma.tenant.count()
-        if (totalSchools >= 2) {
+        if (totalSchools >= 1) {
             return NextResponse.json({
-                error: 'Registration limit reached. Only 2 schools are permitted to register on this platform. It is not permitted to register more than 2 schools.',
+                error: 'Sign Up Denied: Only one school (single-tenant) is permitted on this platform. Second tenant registration is not permitted.',
                 limitReached: true,
+                code: 'SINGLE_TENANT_LIMIT_REACHED',
             }, { status: 403 })
         }
 
