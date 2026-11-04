@@ -6,9 +6,11 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -24,8 +26,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "StarKidsApp";
     public static final String APP_URL = "https://starkids-tau.vercel.app/dashboard";
-    public static final String HOST_ALLOWED = "starkids-tau.vercel.app";
 
     private WebView webView;
     private SwipeRefreshLayout swipeRefresh;
@@ -58,27 +60,42 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        try {
+            setContentView(R.layout.activity_main);
 
-        webView = findViewById(R.id.webView);
-        swipeRefresh = findViewById(R.id.swipeRefresh);
-        progressBar = findViewById(R.id.progressBar);
+            webView = findViewById(R.id.webView);
+            swipeRefresh = findViewById(R.id.swipeRefresh);
+            progressBar = findViewById(R.id.progressBar);
 
-        setupSwipeRefresh();
-        setupWebView();
-        setupBackNavigation();
+            setupSwipeRefresh();
+            setupWebView();
+            setupBackNavigation();
 
-        // Always ensure we load the fresh verified APP_URL
-        webView.loadUrl(APP_URL);
+            if (savedInstanceState == null) {
+                webView.loadUrl(APP_URL);
+            } else {
+                webView.restoreState(savedInstanceState);
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "Fatal error during onCreate: ", t);
+            Toast.makeText(this, "Error initializing app: " + t.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 
     private void setupSwipeRefresh() {
+        if (swipeRefresh == null) return;
         swipeRefresh.setColorSchemeResources(R.color.accent, R.color.primary);
-        swipeRefresh.setOnRefreshListener(() -> webView.reload());
+        swipeRefresh.setOnRefreshListener(() -> {
+            if (webView != null) {
+                webView.reload();
+            }
+        });
     }
 
     @SuppressLint("SetJavaScriptEnabled")
     private void setupWebView() {
+        if (webView == null) return;
+
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -103,46 +120,49 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                // Intercept any obsolete URL redirect and reroute to correct live domain
-                if (url != null && url.contains("starkids.vercel.app") && !url.contains("starkids-tau.vercel.app")) {
-                    String corrected = url.replace("starkids.vercel.app", "starkids-tau.vercel.app");
-                    view.stopLoading();
-                    view.loadUrl(corrected);
-                    return;
-                }
                 super.onPageStarted(view, url, favicon);
-                progressBar.setVisibility(View.VISIBLE);
+                if (progressBar != null) {
+                    progressBar.setVisibility(View.VISIBLE);
+                }
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                progressBar.setVisibility(View.GONE);
-                swipeRefresh.setRefreshing(false);
+                if (progressBar != null) {
+                    progressBar.setVisibility(View.GONE);
+                }
+                if (swipeRefresh != null) {
+                    swipeRefresh.setRefreshing(false);
+                }
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                if (swipeRefresh != null) {
+                    swipeRefresh.setRefreshing(false);
+                }
+                if (progressBar != null) {
+                    progressBar.setVisibility(View.GONE);
+                }
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (request == null || request.getUrl() == null) return false;
                 String url = request.getUrl().toString();
-                return handleUrl(view, url);
+                return handleUrl(url);
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return handleUrl(view, url);
+                return handleUrl(url);
             }
 
-            private boolean handleUrl(WebView view, String url) {
+            private boolean handleUrl(String url) {
                 if (url == null) return false;
-
-                // Intercept any legacy links
-                if (url.contains("starkids.vercel.app") && !url.contains("starkids-tau.vercel.app")) {
-                    String corrected = url.replace("starkids.vercel.app", "starkids-tau.vercel.app");
-                    view.loadUrl(corrected);
-                    return true;
-                }
-
                 if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") || url.startsWith("intent:")) {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
@@ -160,11 +180,13 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                progressBar.setProgress(newProgress);
-                if (newProgress == 100) {
-                    progressBar.setVisibility(View.GONE);
-                } else {
-                    progressBar.setVisibility(View.VISIBLE);
+                if (progressBar != null) {
+                    progressBar.setProgress(newProgress);
+                    if (newProgress == 100) {
+                        progressBar.setVisibility(View.GONE);
+                    } else {
+                        progressBar.setVisibility(View.VISIBLE);
+                    }
                 }
             }
 
@@ -192,7 +214,7 @@ public class MainActivity extends AppCompatActivity {
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (webView.canGoBack()) {
+                if (webView != null && webView.canGoBack()) {
                     webView.goBack();
                 } else {
                     finish();
@@ -204,12 +226,16 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        webView.saveState(outState);
+        if (webView != null) {
+            webView.saveState(outState);
+        }
     }
 
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-        webView.restoreState(savedInstanceState);
+        if (webView != null) {
+            webView.restoreState(savedInstanceState);
+        }
     }
 }
