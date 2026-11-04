@@ -24,7 +24,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String APP_URL = "https://starkids-tau.vercel.app/dashboard";
+    public static final String APP_URL = "https://starkids-tau.vercel.app/dashboard";
+    public static final String HOST_ALLOWED = "starkids-tau.vercel.app";
 
     private WebView webView;
     private SwipeRefreshLayout swipeRefresh;
@@ -67,11 +68,8 @@ public class MainActivity extends AppCompatActivity {
         setupWebView();
         setupBackNavigation();
 
-        if (savedInstanceState == null) {
-            webView.loadUrl(APP_URL);
-        } else {
-            webView.restoreState(savedInstanceState);
-        }
+        // Always ensure we load the fresh verified APP_URL
+        webView.loadUrl(APP_URL);
     }
 
     private void setupSwipeRefresh() {
@@ -99,12 +97,19 @@ public class MainActivity extends AppCompatActivity {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
 
-        String customUserAgent = settings.getUserAgentString() + " StarKidsPublicSchoolApp/1.0 (Android)";
+        String customUserAgent = settings.getUserAgentString() + " StarKidsPublicSchoolApp/1.0.2 (Android)";
         settings.setUserAgentString(customUserAgent);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                // Intercept any obsolete URL redirect and reroute to correct live domain
+                if (url != null && url.contains("starkids.vercel.app") && !url.contains("starkids-tau.vercel.app")) {
+                    String corrected = url.replace("starkids.vercel.app", "starkids-tau.vercel.app");
+                    view.stopLoading();
+                    view.loadUrl(corrected);
+                    return;
+                }
                 super.onPageStarted(view, url, favicon);
                 progressBar.setVisibility(View.VISIBLE);
             }
@@ -119,16 +124,25 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                return handleUrl(url);
+                return handleUrl(view, url);
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return handleUrl(url);
+                return handleUrl(view, url);
             }
 
-            private boolean handleUrl(String url) {
+            private boolean handleUrl(WebView view, String url) {
+                if (url == null) return false;
+
+                // Intercept any legacy links
+                if (url.contains("starkids.vercel.app") && !url.contains("starkids-tau.vercel.app")) {
+                    String corrected = url.replace("starkids.vercel.app", "starkids-tau.vercel.app");
+                    view.loadUrl(corrected);
+                    return true;
+                }
+
                 if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") || url.startsWith("intent:")) {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
