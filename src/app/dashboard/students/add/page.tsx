@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Script from 'next/script'
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -356,11 +357,30 @@ export default function AddStudentPage() {
                     </div>
                 </div>
             )}
-            <div className="page-header">
+            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
                     <h1 className="page-title">➕ Add New Student</h1>
-                    <p className="page-subtitle">Fill in the student details below</p>
+                    <p className="page-subtitle">Fill in the student details below or import via Excel</p>
                 </div>
+                <Link
+                    href="/dashboard/students?import=true"
+                    className="btn"
+                    style={{
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: 'white',
+                        fontWeight: '700',
+                        fontSize: '13px',
+                        padding: '10px 18px',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+                        textDecoration: 'none'
+                    }}
+                >
+                    📥 Bulk Import Students from Excel
+                </Link>
             </div>
 
             {toast && (

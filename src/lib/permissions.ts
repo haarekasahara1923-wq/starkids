@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Role-based permission utility for STAR KIDS admin portals
  *
  * Permission levels:

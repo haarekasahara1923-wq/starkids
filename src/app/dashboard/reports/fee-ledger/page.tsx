@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useAuth } from '@/contexts/AuthContext'
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Download, FileSpreadsheet, Filter, X, Users, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react'

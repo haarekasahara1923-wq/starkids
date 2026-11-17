@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
@@ -648,6 +648,15 @@ export default function StudentsPage() {
     useEffect(() => { fetchStudents() }, [token, search])
 
     useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search)
+            if (params.get('import') === 'true') {
+                setShowImportModal(true)
+            }
+        }
+    }, [])
+
+    useEffect(() => {
         if (selectionMode === 'classwise' && token) fetchCourses()
     }, [selectionMode, token])
 
@@ -737,27 +746,27 @@ export default function StudentsPage() {
             const autoMap: Record<string, string> = {}
             const fieldPatterns: { field: string; patterns: string[] }[] = [
                 { field: 'scholarNo', patterns: ['scholar', 'scholar no', 'scholar no.', 'scholarno', 'sr no', 's.no', 'sno', 'admission no', 'adm no', 'enrollment'] },
-                { field: 'fullName', patterns: ['student name', 'name', 'full name', 'student', 'vidyarthi', 'naam'] },
+                { field: 'fullName', patterns: ['name of student', 'student name', 'name', 'full name', 'student', 'vidyarthi', 'naam'] },
                 { field: 'fatherName', patterns: ['father', 'father name', 'fathers name', "father's name", 'fathername', 'pita', 'guardian'] },
                 { field: 'motherName', patterns: ['mother', 'mother name', 'mothers name', "mother's name", 'mothername', 'mata'] },
                 { field: 'gender', patterns: ['gender', 'sex', 'ling', 'लिंग'] },
                 { field: 'dob', patterns: ['birth date', 'dob', 'date of birth', 'd.o.b', 'birthdate', 'birth', 'd.o.b.', 'janm tithi', 'bitrh date', 'bitrh', 'जन्म तारीख', 'जन्म दिनांक'] },
-                { field: 'mobileNo', patterns: ['mobile', 'mobile no', 'mobile no.', 'phone', 'contact', 'cell', 'student mobile'] },
+                { field: 'mobileNo', patterns: ['mobile', 'mobile no', 'mobile no.', 'phone', 'contact', 'contact no', 'contact no.', 'cell', 'student mobile'] },
                 { field: 'parentMobileNo', patterns: ['parent mobile', 'parent mobile no', 'parent phone', 'guardian mobile', 'father mobile'] },
                 { field: 'email', patterns: ['email', 'mail id', 'mail', 'e-mail', 'email id'] },
                 { field: 'caste', patterns: ['caste', 'category', 'varg', 'jaati'] },
                 { field: 'medium', patterns: ['medium', 'madhyam'] },
                 { field: 'address', patterns: ['address', 'addr', 'pata', 'residential address'] },
-                { field: 'aadhaarNo', patterns: ['adhar', 'aadhaar', 'aadhar', 'aadhar no', 'aadhaar no', 'adhar no', 'uid'] },
-                { field: 'penId', patterns: ['pen id', 'pen', 'penid'] },
+                { field: 'aadhaarNo', patterns: ['adhar', 'aadhaar', 'aadhar', 'aadhar no', 'aadhaar no', 'adhar no', 'uid', 'aadhar no.'] },
+                { field: 'penId', patterns: ['pen id', 'pen', 'penid', 'pen no', 'pen no.'] },
                 { field: 'aparId', patterns: ['apar id', 'apar', 'aparid'] },
-                { field: 'samagraId', patterns: ['samagra', 'samagra id', 'samagraid', 'samagram'] },
+                { field: 'samagraId', patterns: ['samagra', 'samagra id', 'samagraid', 'samagram', 'samgra id', 'samgra'] },
                 { field: 'className', patterns: ['class', 'course', 'class (section', 'class(section', 'kaksha', 'कक्षा', 'std', 'standard', 'grade'] },
                 { field: 'section', patterns: ['section', 'batch', 'division', 'sec'] },
                 { field: 'firstAdmissionDate', patterns: ['first admission date', 'admission date', 'adm date', 'adm. date', 'admission dt', 'date of admission', 'pravesh dinank', 'first admission dt', 'प्रवेश दिनांक'] },
                 { field: 'firstAdmissionClass', patterns: ['first admission class', 'first class', 'admission class', 'pravesh kaksha', 'first damission class', 'first damission', 'damission', 'प्रवेश कक्षा'] },
                 { field: 'bankName', patterns: ['bank name', 'bank'] },
-                { field: 'bankAccountNo', patterns: ['bank account', 'account no', 'account number', 'bank account no', 'ac no', 'a/c no'] },
+                { field: 'bankAccountNo', patterns: ['bank account', 'account no', 'account number', 'bank account no', 'ac no', 'a/c no', 'a/c no.'] },
                 { field: 'ifsc', patterns: ['ifsc', 'ifsc code'] },
             ]
 
@@ -817,7 +826,7 @@ export default function StudentsPage() {
                 gender: get('gender'),
                 dob: get('dob'),
                 mobileNo: get('mobileNo'),
-                parentMobileNo: get('parentMobileNo'),
+                parentMobileNo: get('parentMobileNo') || get('mobileNo'),
                 email: get('email'),
                 caste: get('caste'),
                 medium: get('medium'),

@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/app/api/middleware'
 
 async function fetchFromGroq(systemContent: string, userContent: string) {

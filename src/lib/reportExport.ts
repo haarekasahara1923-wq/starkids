@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Report Export Utilities for STAR KIDS
  * Supports CSV export (with UTF-8 BOM for Excel) and printable PDF generation with professional styling.
  */
