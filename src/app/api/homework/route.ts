@@ -101,12 +101,12 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { batchId, title, description, subject, dueDate, attachmentUrl } = body
 
-  if (!batchId || !title) return NextResponse.json({ error: 'Section/Batch and Title are required' }, { status: 400 })
+  if (!title) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
 
   const homework = await prisma.homework.create({
     data: {
       tenantId: user!.tenantId,
-      batchId,
+      batchId: batchId || null,
       teacherId: user!.userId,
       title,
       description: description || '',
@@ -125,24 +125,26 @@ export async function POST(req: NextRequest) {
     }
   })
 
-  // Notify students in the batch
-  const students = await prisma.student.findMany({
-    where: { tenantId: user!.tenantId, batchId },
-    select: { id: true, userId: true, fullName: true },
-  })
-
-  const studentsWithAccount = students.filter(s => s.userId)
-  if (studentsWithAccount.length > 0) {
-    await prisma.notification.createMany({
-      data: studentsWithAccount.map(s => ({
-        tenantId: user!.tenantId,
-        title: `📚 New Homework: ${title}`,
-        message: `${subject ? subject + ' • ' : ''}${description || title}`,
-        type: 'HOMEWORK',
-        targetRole: 'STUDENT',
-        targetId: s.userId!,
-      })),
+  // Notify students in the batch if batchId is specified
+  if (batchId) {
+    const students = await prisma.student.findMany({
+      where: { tenantId: user!.tenantId, batchId },
+      select: { id: true, userId: true, fullName: true },
     })
+
+    const studentsWithAccount = students.filter(s => s.userId)
+    if (studentsWithAccount.length > 0) {
+      await prisma.notification.createMany({
+        data: studentsWithAccount.map(s => ({
+          tenantId: user!.tenantId,
+          title: `📚 New Homework: ${title}`,
+          message: `${subject ? subject + ' • ' : ''}${description || title}`,
+          type: 'HOMEWORK',
+          targetRole: 'STUDENT',
+          targetId: s.userId!,
+        })),
+      })
+    }
   }
 
   return NextResponse.json({ success: true, homework }, { status: 201 })

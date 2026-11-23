@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface Student { id: string; fullName: string; studentId: string }
-interface Course  { id: string; name: string }
+interface Course  { id: string; name: string; subjects?: string[] }
 interface Batch   { id: string; name: string; courseId: string }
 
 export default function ExamsPage() {
@@ -42,15 +42,15 @@ export default function ExamsPage() {
     // Step 1 → Step 2: load students
     const handleLoadStudents = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!form.courseId || !form.batchId) {
-            setToast({ msg: 'Please select Class and Section first.', type: 'error' })
+        if (!form.courseId) {
+            setToast({ msg: 'Please select Class first.', type: 'error' })
             return
         }
         setLoadingStudents(true)
-        const res = await fetch(
-            `/api/students?course=${form.courseId}&batch=${form.batchId}`,
-            { headers: { Authorization: 'Bearer ' + token } }
-        )
+        const url = form.batchId && form.batchId !== 'all'
+            ? `/api/students?course=${form.courseId}&batch=${form.batchId}`
+            : `/api/students?course=${form.courseId}`
+        const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } })
         const data = await res.json()
         setLoadingStudents(false)
         if (data.success && data.data.length > 0) {
@@ -61,7 +61,7 @@ export default function ExamsPage() {
             setMarks(init)
             setStep(2)
         } else {
-            setToast({ msg: 'No students found in this class/section.', type: 'error' })
+            setToast({ msg: 'No students found in this class.', type: 'error' })
         }
     }
 
@@ -76,7 +76,7 @@ export default function ExamsPage() {
         const res = await fetch('/api/exams', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-            body: JSON.stringify({ ...form, maxMarks: parseFloat(form.maxMarks), results }),
+            body: JSON.stringify({ ...form, batchId: form.batchId || null, maxMarks: parseFloat(form.maxMarks), results }),
         })
         const data = await res.json()
         setSaving(false)
@@ -163,8 +163,38 @@ export default function ExamsPage() {
                                 placeholder="e.g. Mathematics"
                                 value={form.subject}
                                 onChange={e => setForm({ ...form, subject: e.target.value })}
+                                list="class-subjects-list"
                                 required
                             />
+                            {form.courseId && (
+                                <datalist id="class-subjects-list">
+                                    {(courses.find(c => c.id === form.courseId)?.subjects || []).map((sub, idx) => (
+                                        <option key={idx} value={sub} />
+                                    ))}
+                                </datalist>
+                            )}
+                            {form.courseId && (courses.find(c => c.id === form.courseId)?.subjects?.length || 0) > 0 && (
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                    {(courses.find(c => c.id === form.courseId)?.subjects || []).map((sub, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => setForm({ ...form, subject: sub })}
+                                            style={{
+                                                fontSize: '11px',
+                                                padding: '2px 8px',
+                                                borderRadius: '6px',
+                                                border: form.subject === sub ? '1px solid #10b981' : '1px solid var(--border)',
+                                                background: form.subject === sub ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
+                                                color: form.subject === sub ? '#10b981' : 'var(--text-muted)',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {sub}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div>
                             <label className="label">Test Date *</label>
@@ -200,15 +230,14 @@ export default function ExamsPage() {
                             </select>
                         </div>
                         <div>
-                            <label className="label">Section *</label>
+                            <label className="label">Section / Batch (Optional)</label>
                             <select
                                 className="input"
                                 value={form.batchId}
                                 onChange={e => setForm({ ...form, batchId: e.target.value })}
-                                required
                                 disabled={!form.courseId}
                             >
-                                <option value="">Select Section</option>
+                                <option value="">{filteredBatches.length > 0 ? '-- All Sections / Whole Class --' : '-- Whole Class (No Sections) --'}</option>
                                 {filteredBatches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                             </select>
                         </div>

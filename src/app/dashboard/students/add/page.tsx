@@ -618,9 +618,9 @@ export default function AddStudentPage() {
                                 </div>
                             )}
                         </Field>
-                        <Field label="Section">
+                        <Field label="Section (Optional)">
                             <select className="input" value={form.batchId} onChange={e => setForm({ ...form, batchId: e.target.value })} disabled={metadataLoading}>
-                                <option value="">{metadataLoading ? '⌛ Loading sections...' : 'Select Section'}</option>
+                                <option value="">{metadataLoading ? '⌛ Loading sections...' : '-- No Section / Optional --'}</option>
                                 {filteredBatches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                             </select>
                         </Field>

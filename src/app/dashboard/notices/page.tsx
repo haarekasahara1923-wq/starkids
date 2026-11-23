@@ -37,18 +37,19 @@ export default function AdminNotices() {
   }, [token])
 
   useEffect(() => {
-    if (!selectedBatch || !token) {
+    if (!selectedCourse || !token) {
       setStudents([])
       return
     }
-    fetch(`/api/students?batchId=${selectedBatch}`, { headers: h })
+    const q = selectedBatch ? `batchId=${selectedBatch}` : `courseId=${selectedCourse}`
+    fetch(`/api/students?${q}`, { headers: h })
       .then(r => r.json())
       .then(d => setStudents(d.data || []))
-  }, [selectedBatch, token])
+  }, [selectedCourse, selectedBatch, token])
 
   const publish = async () => {
     if (!form.title.trim() || !form.message.trim()) { setMsg('Title and message are required'); return }
-    if (targetType === 'BATCH' && !selectedBatch) { setMsg('Please select Class and Section'); return }
+    if (targetType === 'BATCH' && !selectedCourse) { setMsg('Please select a Class'); return }
     if (targetType === 'STUDENT' && !selectedStudent) { setMsg('Please select a Student'); return }
 
     setCreating(true)
@@ -59,8 +60,13 @@ export default function AdminNotices() {
     }
 
     if (targetType === 'BATCH') {
-      payload.targetType = 'BATCH'
-      payload.targetBatchId = selectedBatch
+      if (selectedBatch) {
+        payload.targetType = 'BATCH'
+        payload.targetBatchId = selectedBatch
+      } else {
+        payload.targetType = 'COURSE'
+        payload.targetCourseId = selectedCourse
+      }
     } else if (targetType === 'STUDENT') {
       payload.targetType = 'STUDENT_PARENT'
       payload.targetStudentId = selectedStudent
@@ -147,7 +153,7 @@ export default function AdminNotices() {
                 </select>
               </div>
               <div>
-                <label className="label">2. Select Section / Batch *</label>
+                <label className="label">2. Select Section / Batch (Optional)</label>
                 <select
                   className="input"
                   value={selectedBatch}
@@ -157,7 +163,7 @@ export default function AdminNotices() {
                   }}
                   disabled={!selectedCourse}
                 >
-                  <option value="">-- Choose Section --</option>
+                  <option value="">{filteredBatches.length > 0 ? '-- All Sections / Whole Class --' : '-- Whole Class (No Sections) --'}</option>
                   {filteredBatches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
@@ -171,7 +177,7 @@ export default function AdminNotices() {
                 className="input"
                 value={selectedStudent}
                 onChange={e => setSelectedStudent(e.target.value)}
-                disabled={!selectedBatch}
+                disabled={!selectedCourse}
               >
                 <option value="">-- Choose Student --</option>
                 {students.map(s => (

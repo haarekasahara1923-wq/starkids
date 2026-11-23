@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
+interface Course { id: string; name: string }
 interface Batch { id: string; name: string; courseId: string; courseName: string }
-interface Student { id: string; fullName: string; batchId: string }
+interface Student { id: string; fullName: string; courseId: string; batchId?: string | null; scholarNo?: string }
 
 const statusOptions = [
     { value: 'PRESENT', label: '✅ Present', color: '#10b981' },
@@ -15,36 +16,50 @@ const statusOptions = [
 
 export default function AttendancePage() {
     const { token } = useAuth()
+    const [courses, setCourses] = useState<Course[]>([])
     const [batches, setBatches] = useState<Batch[]>([])
     const [students, setStudents] = useState<Student[]>([])
+    const [selectedCourse, setSelectedCourse] = useState('')
     const [selectedBatch, setSelectedBatch] = useState('')
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
     const [attendance, setAttendance] = useState<Record<string, string>>({})
     const [saving, setSaving] = useState(false)
     const [toast, setToast] = useState({ show: false, success: true, msg: '' })
-    const [existingRecords, setExistingRecords] = useState<{ studentId: string; status: string }[]>([])
 
     useEffect(() => {
         if (!token) return
         Promise.all([
+            fetch('/api/courses', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
             fetch('/api/batches', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
             fetch('/api/students', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        ]).then(([b, s]) => {
-            if (b.success) setBatches(b.data)
-            if (s.success) setStudents(s.data)
+        ]).then(([c, b, s]) => {
+            if (c.success) setCourses(c.data || [])
+            if (b.success) setBatches(b.data || [])
+            if (s.success) setStudents(s.data || [])
         })
     }, [token])
 
-    const batchStudents = students.filter(s => s.batchId === selectedBatch)
+    const filteredBatches = batches.filter(b => !selectedCourse || b.courseId === selectedCourse)
+
+    const classStudents = students.filter(s => {
+        if (!selectedCourse) return false
+        if (s.courseId !== selectedCourse) return false
+        if (selectedBatch && selectedBatch !== 'all') return s.batchId === selectedBatch
+        return true
+    })
 
     // Initialize and load existing attendance
     useEffect(() => {
-        if (batchStudents.length > 0 && selectedBatch) {
-            fetch(`/api/attendance?batchId=${selectedBatch}&date=${selectedDate}`, { headers: { Authorization: `Bearer ${token}` } })
+        if (classStudents.length > 0 && selectedCourse) {
+            const query = selectedBatch && selectedBatch !== 'all' 
+                ? `batchId=${selectedBatch}&date=${selectedDate}` 
+                : `courseId=${selectedCourse}&date=${selectedDate}`
+
+            fetch(`/api/attendance?${query}`, { headers: { Authorization: `Bearer ${token}` } })
             .then(r => r.json())
             .then(d => {
                 const init: Record<string, string> = {}
-                batchStudents.forEach(s => { init[s.id] = 'PRESENT' }) // default
+                classStudents.forEach(s => { init[s.id] = 'PRESENT' }) // default
                 if (d.success && d.data) {
                     d.data.forEach((a: any) => {
                         init[a.studentId] = a.status
@@ -53,20 +68,20 @@ export default function AttendancePage() {
                 setAttendance(init)
             })
         }
-    }, [selectedBatch, selectedDate, token])
+    }, [selectedCourse, selectedBatch, selectedDate, token])
 
     const markAll = (status: string) => {
         const all: Record<string, string> = {}
-        batchStudents.forEach(s => { all[s.id] = status })
+        classStudents.forEach(s => { all[s.id] = status })
         setAttendance(all)
     }
 
     const saveAttendance = async () => {
-        if (!selectedBatch || batchStudents.length === 0) return
+        if (!selectedCourse || classStudents.length === 0) return
         setSaving(true)
-        const records = batchStudents.map(s => ({
+        const records = classStudents.map(s => ({
             studentId: s.id,
-            batchId: selectedBatch,
+            batchId: s.batchId || (selectedBatch !== 'all' ? selectedBatch : null) || null,
             date: selectedDate,
             status: attendance[s.id] || 'PRESENT',
         }))
@@ -85,14 +100,14 @@ export default function AttendancePage() {
 
     const presentCount = Object.values(attendance).filter(s => s === 'PRESENT').length
     const absentCount = Object.values(attendance).filter(s => s === 'ABSENT').length
-    const totalInBatch = batchStudents.length
+    const totalInBatch = classStudents.length
 
     return (
         <div>
             <div className="page-header">
                 <div>
                     <h1 className="page-title">✅ Attendance Management</h1>
-                    <p className="page-subtitle">Mark daily attendance for batches</p>
+                    <p className="page-subtitle">Mark daily attendance for classes & optional sections</p>
                 </div>
             </div>
 
@@ -105,21 +120,36 @@ export default function AttendancePage() {
             {/* Controls */}
             <div className="card" style={{ marginBottom: '20px', padding: '20px' }}>
                 <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                    <div style={{ flex: 1, minWidth: '200px' }}>
-                        <label className="label">Select Batch</label>
-                        <select className="input" value={selectedBatch} onChange={e => setSelectedBatch(e.target.value)}>
-                            <option value="">Choose a batch...</option>
-                            {batches.map(b => <option key={b.id} value={b.id}>{b.name} ({b.courseName})</option>)}
+                    <div style={{ flex: 1, minWidth: '180px' }}>
+                        <label className="label">1. Select Class *</label>
+                        <select className="input" value={selectedCourse} onChange={e => {
+                            setSelectedCourse(e.target.value)
+                            setSelectedBatch('')
+                        }}>
+                            <option value="">Choose a class...</option>
+                            {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    <div style={{ flex: 1, minWidth: '180px' }}>
+                        <label className="label">2. Section / Batch (Optional)</label>
+                        <select 
+                            className="input" 
+                            value={selectedBatch} 
+                            onChange={e => setSelectedBatch(e.target.value)}
+                            disabled={!selectedCourse}
+                        >
+                            <option value="">{filteredBatches.length > 0 ? '-- All Sections / Whole Class --' : '-- Whole Class (No Sections) --'}</option>
+                            {filteredBatches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="label">Date</label>
+                        <label className="label">3. Date</label>
                         <input className="input" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} style={{ width: '180px' }} />
                     </div>
                 </div>
             </div>
 
-            {selectedBatch && batchStudents.length > 0 && (
+            {selectedCourse && classStudents.length > 0 && (
                 <>
                     {/* Stats */}
                     <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -128,20 +158,19 @@ export default function AttendancePage() {
                             { label: 'Present', value: presentCount, color: '#10b981' },
                             { label: 'Absent', value: absentCount, color: '#ef4444' },
                             { label: 'Other', value: totalInBatch - presentCount - absentCount, color: '#f59e0b' },
-                            { label: 'Attendance %', value: `${totalInBatch ? Math.round((presentCount / totalInBatch) * 100) : 0}%`, color: '#06b6d4' },
-                        ].map(s => (
-                            <div key={s.label} style={{ padding: '12px 20px', background: 'var(--surface)', border: `1px solid ${s.color}30`, borderRadius: '12px', textAlign: 'center', borderLeft: `3px solid ${s.color}`, minWidth: '90px' }}>
-                                <div style={{ fontSize: '22px', fontWeight: '800', color: s.color }}>{s.value}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{s.label}</div>
+                        ].map(st => (
+                            <div key={st.label} className="card" style={{ flex: '1 1 120px', padding: '14px 18px', borderLeft: `4px solid ${st.color}` }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>{st.label}</div>
+                                <div style={{ fontSize: '24px', fontWeight: '800', marginTop: '2px', color: st.color }}>{st.value}</div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Bulk Actions */}
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '13px', color: 'var(--text-muted)', alignSelf: 'center', marginRight: '4px' }}>Mark all as:</span>
+                    {/* Quick Actions */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '600' }}>Quick Mark:</span>
                         {statusOptions.map(s => (
-                            <button key={s.value} onClick={() => markAll(s.value)} className="btn btn-secondary btn-sm" style={{ borderColor: `${s.color}40`, color: s.color }}>
+                            <button key={s.value} onClick={() => markAll(s.value)} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: '12px' }}>
                                 {s.label}
                             </button>
                         ))}
@@ -154,17 +183,20 @@ export default function AttendancePage() {
                                 <thead>
                                     <tr>
                                         <th>#</th>
+                                        <th>Scholar No</th>
                                         <th>Student</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {batchStudents.map((student, i) => {
+                                    {classStudents.map((student, i) => {
                                         const currentStatus = attendance[student.id] || 'PRESENT'
-                                        const statusConf = statusOptions.find(s => s.value === currentStatus)
                                         return (
                                             <tr key={student.id}>
                                                 <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{i + 1}</td>
+                                                <td style={{ fontWeight: '600', color: 'var(--primary)', fontSize: '13px' }}>
+                                                    {student.scholarNo || '-'}
+                                                </td>
                                                 <td>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                         <div className="avatar" style={{ width: '32px', height: '32px', fontSize: '12px' }}>{student.fullName.charAt(0)}</div>
@@ -203,17 +235,17 @@ export default function AttendancePage() {
                 </>
             )}
 
-            {selectedBatch && batchStudents.length === 0 && (
+            {selectedCourse && classStudents.length === 0 && (
                 <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>👩‍🎓</div>
-                    <p style={{ color: 'var(--text-secondary)' }}>No students found in this batch</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>No students found in this class{selectedBatch ? ' / section' : ''}</p>
                 </div>
             )}
 
-            {!selectedBatch && (
+            {!selectedCourse && (
                 <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>Select a batch above to mark attendance</p>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>Select a class above to mark attendance</p>
                 </div>
             )}
         </div>

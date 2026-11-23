@@ -44,24 +44,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Required fields missing: Class, Exam Name, Start Date, and End Date are mandatory' }, { status: 400 })
         }
 
-        // Ensure a valid batchId exists for AdmitCardEvent relation
-        let resolvedBatchId = batchId && batchId !== 'all' ? batchId : null
-        if (!resolvedBatchId) {
-            let existingBatch = await prisma.batch.findFirst({
-                where: { tenantId: user!.tenantId, courseId, isActive: true }
-            })
-            if (!existingBatch) {
-                existingBatch = await prisma.batch.create({
-                    data: {
-                        tenantId: user!.tenantId,
-                        courseId,
-                        name: 'Section A',
-                        isActive: true
-                    }
-                })
-            }
-            resolvedBatchId = existingBatch.id
-        }
+        // Resolved optional batchId
+        const resolvedBatchId = batchId && batchId !== 'all' ? batchId : null
 
         // Get active students in this class/batch
         const studentWhere: any = {

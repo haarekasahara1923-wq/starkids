@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         const body = await req.json()
         const { title, subject, date, maxMarks, courseId, batchId, results } = body
 
-        if (!title || !subject || !maxMarks || !courseId || !batchId || !results) {
+        if (!title || !subject || !maxMarks || !courseId || !results) {
             return NextResponse.json({ error: 'Required fields missing' }, { status: 400 })
         }
 
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
                 date: new Date(date),
                 maxMarks: maxM,
                 courseId,
-                batchId,
+                batchId: batchId || null,
                 teacherId: user!.userId,
                 results: {
                     create: results.map((r: any) => ({

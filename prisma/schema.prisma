@@ -873,7 +873,7 @@ enum WithdrawalStatus {
 model Homework {
   id            String    @id @default(cuid())
   tenantId      String
-  batchId       String
+  batchId       String?
   teacherId     String? // User id of the teacher
   title         String
   description   String?
@@ -884,7 +884,7 @@ model Homework {
   updatedAt     DateTime  @updatedAt
 
   tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  batch       Batch                @relation(fields: [batchId], references: [id])
+  batch       Batch?               @relation(fields: [batchId], references: [id])
   submissions HomeworkSubmission[]
 
   @@index([tenantId])
@@ -963,14 +963,14 @@ model Exam {
   subject   String
   maxMarks  Float
   courseId  String
-  batchId   String
+  batchId   String?
   teacherId String? // Reference to User ID of the teacher
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tenant  Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   course  Course       @relation(fields: [courseId], references: [id])
-  batch   Batch        @relation(fields: [batchId], references: [id])
+  batch   Batch?       @relation(fields: [batchId], references: [id])
   results ExamResult[]
 
   @@index([tenantId])
@@ -1156,7 +1156,7 @@ model AdmitCardEvent {
   id          String   @id @default(cuid())
   tenantId    String
   courseId    String
-  batchId     String
+  batchId     String?
   examName    String
   startDate   DateTime
   endDate     DateTime
@@ -1167,7 +1167,7 @@ model AdmitCardEvent {
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   course      Course      @relation(fields: [courseId], references: [id])
-  batch       Batch       @relation(fields: [batchId], references: [id])
+  batch       Batch?      @relation(fields: [batchId], references: [id])
   admitCards  AdmitCard[]
 
   @@index([tenantId])
