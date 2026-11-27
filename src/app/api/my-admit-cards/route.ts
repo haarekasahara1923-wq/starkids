@@ -28,7 +28,15 @@ export async function GET(req: NextRequest) {
             where: {
                 tenantId: user!.tenantId,
                 studentId: { in: studentIds },
-                isPublished: true
+                isPublished: true,
+                OR: [
+                    { isBlocked: false },
+                    { superAdminApproved: true }
+                ],
+                student: {
+                    status: 'ACTIVE',
+                    tcGenerated: false
+                }
             },
             include: {
                 event: {
@@ -45,6 +53,7 @@ export async function GET(req: NextRequest) {
                     select: {
                         fullName: true,
                         fatherName: true,
+                        motherName: true,
                         photo: true,
                         scholarNo: true,
                         dob: true
@@ -56,7 +65,9 @@ export async function GET(req: NextRequest) {
                         logo: true,
                         address: true,
                         phone: true,
-                        email: true
+                        email: true,
+                        schoolCode: true,
+                        directorSign: true
                     }
                 }
             },

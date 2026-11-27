@@ -14,14 +14,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ even
                 course: { select: { name: true } },
                 batch: { select: { name: true } },
                 admitCards: {
+                    orderBy: { rollNo: 'asc' },
                     include: {
                         student: {
                             select: {
                                 fullName: true,
                                 fatherName: true,
+                                motherName: true,
                                 dob: true,
                                 photo: true,
                                 scholarNo: true,
+                                status: true,
+                                tcGenerated: true,
                             }
                         }
                     }
@@ -85,6 +89,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ev
             if (toPublish.length < studentIds.length) {
                 return NextResponse.json({ success: true, message: `Published ${toPublish.length} cards. Some were blocked and require super admin approval.` })
             }
+        } else if (action === 'unpublish') {
+            await prisma.admitCard.updateMany({
+                where: { eventId, studentId: { in: studentIds }, tenantId: user!.tenantId },
+                data: { isPublished: false }
+            })
         } else if (action === 'approve') {
             // Super Admin only action
             if (user!.role !== 'SUPER_ADMIN' && user!.role !== 'COACHING_ADMIN') {

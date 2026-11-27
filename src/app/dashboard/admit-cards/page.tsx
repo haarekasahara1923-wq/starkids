@@ -3,256 +3,13 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
-function fmtDate(d: string) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-function fmtTime(t: string) {
-  if (!t) return ''
-  const [h, m] = t.split(':').map(Number)
-  const ampm = h >= 12 ? 'PM' : 'AM'
-  const hr = h % 12 || 12
-  return `${hr}:${m.toString().padStart(2, '0')} ${ampm}`
-}
-
-function computeDuration(start: string, end: string): string {
-  if (!start || !end) return ''
-  const [sh, sm] = start.split(':').map(Number)
-  const [eh, em] = end.split(':').map(Number)
-  const total = (eh * 60 + em) - (sh * 60 + sm)
-  if (total <= 0) return ''
-  const h = Math.floor(total / 60)
-  const m = total % 60
-  return h > 0 ? `${h}h ${m > 0 ? m + 'm' : ''}`.trim() : `${m}m`
-}
-
-// ── Printable Admit Card HTML Generator ──────────────────────────────────────
-// Format: School Header -> HALL TICKET / ADMIT CARD -> Student Details & Photo -> Attached Exam Timetable -> Instructions -> Signatures
-function generateAdmitCardsPrintHTML(eventDetails: any, tenant: any, singleCard?: any) {
-  const schoolName = tenant?.name || 'STAR KIDS Public School'
-  const schoolLogo = tenant?.logo || ''
-  const schoolAddress = tenant?.address || ''
-  const schoolPhone = tenant?.phone || ''
-  const schoolEmail = tenant?.email || ''
-  const schoolCode = tenant?.schoolCode || ''
-  const directorSign = tenant?.directorSign || ''
-
-  const cardsToPrint = singleCard ? [singleCard] : (eventDetails.admitCards || [])
-  const timeTable = Array.isArray(eventDetails.timeTable) ? eventDetails.timeTable : []
-
-  const cardsHtml = cardsToPrint.map((card: any) => `
-    <div class="admit-card-page">
-      <div class="card-border">
-        <!-- Colored top bar -->
-        <div class="top-strip"></div>
-
-        <!-- School Header -->
-        <div class="header">
-          <div class="logo-box">
-            ${schoolLogo ? `<img src="${schoolLogo}" alt="Logo" onerror="this.parentElement.textContent='🏫'"/>` : '<span style="font-size:32px;">🏫</span>'}
-          </div>
-          <div class="header-text">
-            <h1 class="school-name">${schoolName}</h1>
-            ${schoolAddress ? `<p class="school-sub">${schoolAddress}</p>` : ''}
-            <p class="school-contact">
-              ${schoolPhone ? `📞 ${schoolPhone}` : ''}${schoolPhone && schoolEmail ? ' &nbsp;|&nbsp; ' : ''}${schoolEmail ? `✉ ${schoolEmail}` : ''}
-              ${schoolCode ? ` &nbsp;|&nbsp; School Code: <strong>${schoolCode}</strong>` : ''}
-            </p>
-          </div>
-          <div class="header-tag">
-            <div class="tag-sub">HALL TICKET</div>
-            <div class="tag-main">ADMIT CARD</div>
-          </div>
-        </div>
-
-        <!-- Exam Title Banner -->
-        <div class="exam-banner">
-          ✦ &nbsp; ${eventDetails.examName} &nbsp; ✦
-          <div style="font-size:11px;font-weight:600;margin-top:2px;letter-spacing:0.5px;opacity:0.9;">
-            ${eventDetails.course?.name || ''}${eventDetails.batch?.name ? ' — ' + eventDetails.batch.name : ''}
-          </div>
-        </div>
-
-        <!-- Student Info & Photo Section -->
-        <div class="student-info-section">
-          <div class="student-details-grid">
-            <div class="detail-item">
-              <span class="detail-label">STUDENT NAME</span>
-              <span class="detail-value highlight">${card.student.fullName}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">SCHOLAR / ROLL NO</span>
-              <span class="detail-value">${card.student.scholarNo || 'N/A'}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">FATHER'S NAME</span>
-              <span class="detail-value">${card.student.fatherName || 'N/A'}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">CLASS & SECTION</span>
-              <span class="detail-value">${eventDetails.course?.name || ''} - ${eventDetails.batch?.name || ''}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">DATE OF BIRTH</span>
-              <span class="detail-value">${card.student.dob ? fmtDate(card.student.dob) : 'N/A'}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">EXAMINATION DATES</span>
-              <span class="detail-value">${fmtDate(eventDetails.startDate)} → ${fmtDate(eventDetails.endDate)}</span>
-            </div>
-          </div>
-
-          <div class="photo-container">
-            <div class="photo-box">
-              ${card.student.photo ? `<img src="${card.student.photo}" alt="Student Photo" />` : '<div style="font-size:36px;">👤</div><div style="font-size:9px;color:#64748b;margin-top:4px;">Affix Photo</div>'}
-            </div>
-          </div>
-        </div>
-
-        <!-- Attached Exam Time Table (Shown directly below admit card) -->
-        <div class="section-divider">
-          <span>EXAMINATION TIME TABLE / SCHEDULE</span>
-        </div>
-
-        <table class="timetable-table">
-          <thead>
-            <tr>
-              <th style="width:14%;">Date</th>
-              <th style="width:40%;">Subject / Paper</th>
-              <th style="width:23%;">Exam Time</th>
-              <th style="width:23%;">Duration</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${timeTable.length === 0 ? `
-              <tr>
-                <td colspan="4" style="text-align:center;padding:12px;color:#64748b;">Schedule will be notified separately.</td>
-              </tr>
-            ` : timeTable.map((t: any) => `
-              <tr>
-                <td style="font-weight:700;color:#1a237e;">${fmtDate(t.date)}</td>
-                <td style="font-weight:600;color:#0f172a;">${t.subject}</td>
-                <td>${fmtTime(t.startTime)} — ${fmtTime(t.endTime)}</td>
-                <td style="color:#64748b;">${t.duration || computeDuration(t.startTime, t.endTime) || '—'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <!-- Instructions -->
-        <div class="instructions-box">
-          <div class="instructions-title">IMPORTANT CANDIDATE INSTRUCTIONS:</div>
-          <ol class="instructions-list">
-            <li>Candidate must carry this Admit Card & School ID Card to the examination hall for all papers.</li>
-            <li>Report strictly 20 minutes before the scheduled exam commencement time.</li>
-            <li>Mobile phones, smartwatches, calculators, and unfair means material are strictly prohibited.</li>
-            <li>Maintain silence and strict discipline inside the examination hall.</li>
-          </ol>
-        </div>
-
-        <!-- Signatures -->
-        <div class="signatures-row">
-          <div class="sig-block">
-            <div class="sig-line"></div>
-            <div class="sig-text">Candidate's Signature</div>
-          </div>
-          <div class="sig-block">
-            <div class="sig-line"></div>
-            <div class="sig-text">Class Teacher's Signature</div>
-          </div>
-          <div class="sig-block">
-            <div class="sig-line">
-              ${directorSign ? `<img src="${directorSign}" alt="Principal Signature" style="max-height:40px;max-width:140px;object-fit:contain;"/>` : ''}
-            </div>
-            <div class="sig-text">Principal / Controller of Exams</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `).join('')
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<title>Admit Cards – ${eventDetails.examName}</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',sans-serif;background:#f1f5f9;margin:0;padding:20px;color:#1e293b;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-.admit-card-page{width:210mm;margin:0 auto 30px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);page-break-after:always;}
-.card-border{border:2.5px solid #1a237e;border-radius:10px;margin:8px;padding:18px 20px;position:relative;}
-.top-strip{position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#1a237e,#2563eb,#fbbf24);}
-.header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #1a237e;padding-bottom:12px;margin-top:4px;}
-.logo-box{width:68px;height:68px;border-radius:10px;border:1.5px solid #cbd5e1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafc;flex-shrink:0;}
-.logo-box img{width:100%;height:100%;object-fit:contain;}
-.header-text{flex:1;}
-.school-name{font-size:19px;font-weight:900;color:#1a237e;text-transform:uppercase;letter-spacing:0.5px;margin:0;}
-.school-sub{font-size:11px;color:#475569;margin-top:2px;line-height:1.4;}
-.school-contact{font-size:10px;color:#64748b;margin-top:2px;}
-.header-tag{text-align:right;flex-shrink:0;}
-.tag-sub{font-size:10px;font-weight:700;color:#64748b;letter-spacing:1px;text-transform:uppercase;}
-.tag-main{font-size:18px;font-weight:900;color:#b45309;background:#fef3c7;padding:4px 10px;border-radius:6px;border:1px solid #fde68a;margin-top:2px;letter-spacing:0.5px;}
-
-.exam-banner{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a237e;font-weight:900;text-align:center;padding:7px 12px;margin:12px 0;border-radius:6px;font-size:13px;text-transform:uppercase;letter-spacing:1.5px;}
-
-.student-info-section{display:flex;gap:18px;align-items:flex-start;margin-bottom:12px;}
-.student-details-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:9px 16px;}
-.detail-item{border-bottom:1px solid #e2e8f0;padding-bottom:4px;}
-.detail-label{display:block;font-size:9px;font-weight:700;color:#64748b;letter-spacing:0.5px;text-transform:uppercase;}
-.detail-value{font-size:13px;font-weight:700;color:#0f172a;}
-.detail-value.highlight{color:#1a237e;font-size:14px;font-weight:800;}
-.photo-container{width:96px;flex-shrink:0;text-align:center;}
-.photo-box{width:96px;height:116px;border:1.5px solid #1a237e;border-radius:6px;background:#f8fafc;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}
-.photo-box img{width:100%;height:100%;object-fit:cover;}
-
-.section-divider{display:flex;align-items:center;margin:10px 0 6px 0;text-align:center;}
-.section-divider::before,.section-divider::after{content:'';flex:1;border-bottom:1.5px solid #cbd5e1;}
-.section-divider span{padding:0 10px;font-size:11px;font-weight:800;color:#1a237e;letter-spacing:1px;text-transform:uppercase;}
-
-.timetable-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px;border-radius:6px;overflow:hidden;border:1px solid #cbd5e1;}
-.timetable-table th{background:#1a237e;color:#fff;padding:6px 10px;text-align:left;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;font-size:10px;}
-.timetable-table td{border-bottom:1px solid #e2e8f0;padding:6px 10px;text-align:left;}
-.timetable-table tr:nth-child(even){background:#f8fafc;}
-
-.instructions-box{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 12px;margin-bottom:14px;}
-.instructions-title{font-size:10px;font-weight:800;color:#92400e;letter-spacing:0.5px;}
-.instructions-list{margin:4px 0 0;padding-left:16px;font-size:9.5px;color:#78350f;line-height:1.5;}
-
-.signatures-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px;padding:0 10px;}
-.sig-block{text-align:center;width:150px;}
-.sig-line{height:42px;border-bottom:1.5px solid #1e293b;margin-bottom:4px;display:flex;align-items:flex-end;justify-content:center;}
-.sig-text{font-size:10px;font-weight:700;color:#475569;}
-
-@media print{
-  body{background:#fff;padding:0;}
-  .admit-card-page{width:100%;margin:0;box-shadow:none;page-break-after:always;}
-  .card-border{border:2px solid #1a237e;margin:0;padding:16px 18px;}
-  @page{size:A4 portrait;margin:8mm;}
-}
-</style>
-</head>
-<body>
-  ${cardsHtml}
-  <script>window.onload=function(){window.print();}</script>
-</body>
-</html>`
-}
-
-function printCardsWindow(eventDetails: any, tenant: any, singleCard?: any) {
-  const html = generateAdmitCardsPrintHTML(eventDetails, tenant, singleCard)
-  const win = window.open('', '_blank', 'width=950,height=750')
-  if (!win) {
-    alert('Please allow popups to print/download Admit Cards.')
-    return
-  }
-  win.document.open()
-  win.document.write(html)
-  win.document.close()
-}
+import {
+  fmtAdmitDate as fmtDate,
+  fmtAdmitTime as fmtTime,
+  computeExamDuration as computeDuration,
+  generateClassRollNo,
+  openAdmitCardsPrintWindow as printCardsWindow,
+} from '@/lib/admitCardHelpers'
 
 // ── Main Component ────────────────────────────────────────────────────────────
 function DashboardAdmitCardsContent() {
@@ -271,6 +28,7 @@ function DashboardAdmitCardsContent() {
   const [modalLoading, setModalLoading] = useState(false)
   const [showGenerateForm, setShowGenerateForm] = useState(false)
   const [searchStudent, setSearchStudent] = useState('')
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
   const [toast, setToast] = useState('')
 
   // Form state
@@ -347,12 +105,37 @@ function DashboardAdmitCardsContent() {
     setFormBatch('')
     if (!courseId) {
       setFormStudentCount(null)
+      setFormTimeTable([])
       return
     }
+
+    // Pre-fill Time Table Zone with subjects configured on this class
+    const selectedCourse = courses.find(c => c.id === courseId)
+    const courseSubjects: string[] = Array.isArray(selectedCourse?.subjects)
+      ? selectedCourse.subjects.map((s: string) => s.trim()).filter(Boolean)
+      : []
+
+    if (courseSubjects.length > 0) {
+      setFormTimeTable(
+        courseSubjects.map((subject) => ({
+          date: '',
+          subject,
+          startTime: '09:00',
+          endTime: '12:00',
+          duration: '3h',
+        }))
+      )
+    } else {
+      setFormTimeTable([])
+    }
+
     try {
-      const res = await fetch(`/api/students?courseId=${courseId}`, { headers })
+      const res = await fetch(`/api/students?courseId=${courseId}&status=ACTIVE`, { headers })
       const data = await res.json()
-      if (data.success) setFormStudentCount(data.data?.length || 0)
+      if (data.success) {
+        const eligible = (data.data || []).filter((s: any) => !s.tcGenerated)
+        setFormStudentCount(eligible.length)
+      }
     } catch {
       setFormStudentCount(null)
     }
@@ -422,11 +205,47 @@ function DashboardAdmitCardsContent() {
     try {
       const res = await fetch(`/api/admit-cards/${e.id}`, { headers })
       const data = await res.json()
-      if (data.success) setEventDetails(data.data)
+      if (data.success) {
+        setEventDetails(data.data)
+        const defaultSelected = (data.data?.admitCards || [])
+          .filter((c: any) => !c.isPublished && (!c.isBlocked || c.superAdminApproved))
+          .map((c: any) => c.studentId)
+        setSelectedStudentIds(defaultSelected)
+      }
     } catch (err) {
       console.error(err)
     }
     setModalLoading(false)
+  }
+
+  const toggleStudentSelection = (studentId: string) => {
+    setSelectedStudentIds(prev =>
+      prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]
+    )
+  }
+
+  const toggleSelectAllFiltered = (cards: any[]) => {
+    const eligibleIds = cards
+      .filter((c: any) => !c.isBlocked || c.superAdminApproved)
+      .map((c: any) => c.studentId)
+    const allSelected = eligibleIds.length > 0 && eligibleIds.every(id => selectedStudentIds.includes(id))
+    if (allSelected) {
+      setSelectedStudentIds(prev => prev.filter(id => !eligibleIds.includes(id)))
+    } else {
+      setSelectedStudentIds(prev => Array.from(new Set([...prev, ...eligibleIds])))
+    }
+  }
+
+  const publishSelected = async () => {
+    if (!eventDetails) return
+    const toPublish = eventDetails.admitCards
+      .filter((c: any) => selectedStudentIds.includes(c.studentId) && !c.isPublished && (!c.isBlocked || c.superAdminApproved))
+      .map((c: any) => c.studentId)
+    if (toPublish.length === 0) {
+      showToast('⚠️ Please tick at least one eligible unpublished student to publish')
+      return
+    }
+    await handleAction('publish', toPublish)
   }
 
   const handleAction = async (action: string, studentIds: string[]) => {
@@ -508,6 +327,7 @@ function DashboardAdmitCardsContent() {
     const q = searchStudent.toLowerCase()
     return (
       c.student.fullName?.toLowerCase().includes(q) ||
+      c.rollNo?.toLowerCase().includes(q) ||
       c.student.scholarNo?.toLowerCase().includes(q) ||
       c.student.fatherName?.toLowerCase().includes(q)
     )
@@ -644,7 +464,21 @@ function DashboardAdmitCardsContent() {
                 </select>
                 {formStudentCount !== null && (
                   <div style={{ fontSize: '12px', color: formStudentCount > 0 ? '#10b981' : '#ef4444', fontWeight: '700', marginTop: '6px' }}>
-                    {formStudentCount > 0 ? `👥 ${formStudentCount} Active Students will receive this Admit Card` : '⚠️ No active students found in this class'}
+                    {formStudentCount > 0 ? (
+                      <>
+                        👥 {formStudentCount} Eligible Active Students (Blocked &amp; TC excluded)
+                        {(() => {
+                          const cls = courses.find(c => c.id === formCourse)?.name || ''
+                          const firstRoll = generateClassRollNo(cls, 0)
+                          const lastRoll = generateClassRollNo(cls, formStudentCount - 1)
+                          return (
+                            <span style={{ display: 'block', color: '#a78bfa', marginTop: '2px' }}>
+                              🔢 Sequential Roll Nos: {firstRoll}{formStudentCount > 1 ? ` → ${lastRoll}` : ''}
+                            </span>
+                          )
+                        })()}
+                      </>
+                    ) : '⚠️ No eligible active students found in this class (blocked & TC students are excluded)'}
                   </div>
                 )}
               </div>
@@ -1072,7 +906,26 @@ function DashboardAdmitCardsContent() {
                         gap: '6px'
                       }}
                     >
-                      🖨️ Print All Cards
+                      📥 Download / Print All Cards
+                    </button>
+
+                    <button
+                      onClick={publishSelected}
+                      style={{
+                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 14px',
+                        borderRadius: '10px',
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      ✓ Publish Selected ({eventDetails.admitCards.filter((c: any) => selectedStudentIds.includes(c.studentId) && !c.isPublished && (!c.isBlocked || c.superAdminApproved)).length})
                     </button>
 
                     <button
@@ -1091,7 +944,7 @@ function DashboardAdmitCardsContent() {
                         gap: '6px'
                       }}
                     >
-                      🚀 Publish All Eligible
+                      🚀 Publish All
                     </button>
                   </>
                 )}
@@ -1155,11 +1008,25 @@ function DashboardAdmitCardsContent() {
                     </div>
                   )}
 
-                  {/* Search Bar & Stats */}
+                  {/* Search Bar, Select All & Stats */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', cursor: 'pointer', background: 'var(--surface-2)', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredStudents.filter((c: any) => !c.isBlocked || c.superAdminApproved).length > 0 &&
+                          filteredStudents
+                            .filter((c: any) => !c.isBlocked || c.superAdminApproved)
+                            .every((c: any) => selectedStudentIds.includes(c.studentId))
+                        }
+                        onChange={() => toggleSelectAllFiltered(filteredStudents)}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      Select All / Untick to Hold
+                    </label>
                     <input
                       type="text"
-                      placeholder="🔍 Search student name, roll / scholar no..."
+                      placeholder="🔍 Search student name, roll no, scholar no..."
                       value={searchStudent}
                       onChange={e => setSearchStudent(e.target.value)}
                       className="input"
@@ -1192,8 +1059,16 @@ function DashboardAdmitCardsContent() {
                               gap: '12px'
                             }}
                           >
-                            {/* Student Profile Info */}
+                            {/* Student Profile Info with Publish Selection Checkbox */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedStudentIds.includes(card.studentId)}
+                                disabled={card.isBlocked && !card.superAdminApproved}
+                                onChange={() => toggleStudentSelection(card.studentId)}
+                                title={card.isBlocked && !card.superAdminApproved ? 'Blocked student' : 'Tick to include in publish, untick to hold'}
+                                style={{ width: '17px', height: '17px', cursor: card.isBlocked && !card.superAdminApproved ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                              />
                               <div style={{
                                 width: '44px',
                                 height: '44px',
@@ -1213,8 +1088,13 @@ function DashboardAdmitCardsContent() {
                                 )}
                               </div>
                               <div>
-                                <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                                  {card.student.fullName}
+                                <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                  <span>{card.student.fullName}</span>
+                                  {card.rollNo && (
+                                    <span style={{ fontSize: '11px', background: 'rgba(245,158,11,0.18)', color: '#fbbf24', padding: '2px 8px', borderRadius: '6px', fontWeight: '800' }}>
+                                      Roll No: {card.rollNo}
+                                    </span>
+                                  )}
                                 </div>
                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                   <span>Scholar No: <strong>{card.student.scholarNo || 'N/A'}</strong></span>
@@ -1257,7 +1137,7 @@ function DashboardAdmitCardsContent() {
                                 </button>
                               )}
 
-                              {/* Publish Single Card */}
+                              {/* Publish / Unpublish Single Card */}
                               {!card.isPublished && (!card.isBlocked || card.superAdminApproved) && (
                                 <button
                                   onClick={() => handleAction('publish', [card.studentId])}
@@ -1273,6 +1153,25 @@ function DashboardAdmitCardsContent() {
                                   }}
                                 >
                                   Publish
+                                </button>
+                              )}
+
+                              {card.isPublished && (
+                                <button
+                                  onClick={() => handleAction('unpublish', [card.studentId])}
+                                  style={{
+                                    background: 'rgba(245,158,11,0.15)',
+                                    color: '#f59e0b',
+                                    border: '1px solid rgba(245,158,11,0.35)',
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    fontSize: '11px',
+                                    fontWeight: '700',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Hold / remove from Parent Portal"
+                                >
+                                  Hold / Unpublish
                                 </button>
                               )}
 

@@ -216,13 +216,38 @@ export default function DashboardExamTimetable() {
     if (!courseId) {
       setBatches([])
       setClassStudentCount(null)
+      setRows([])
       return
     }
     fetchBatches(courseId)
+
+    // Pre-fill Time Table rows with subjects configured on this class
+    const selected = courses.find(c => c.id === courseId)
+    const courseSubjects: string[] = Array.isArray(selected?.subjects)
+      ? selected.subjects.map((s: string) => s.trim()).filter(Boolean)
+      : []
+
+    if (courseSubjects.length > 0) {
+      setRows(
+        courseSubjects.map((subject) => ({
+          date: '',
+          subject,
+          startTime: '09:00',
+          endTime: '12:00',
+          duration: '3h',
+        }))
+      )
+    } else {
+      setRows([])
+    }
+
     try {
-      const res = await fetch(`/api/students?courseId=${courseId}`, { headers })
+      const res = await fetch(`/api/students?courseId=${courseId}&status=ACTIVE`, { headers })
       const data = await res.json()
-      if (data.success) setClassStudentCount(data.data?.length || 0)
+      if (data.success) {
+        const eligible = (data.data || []).filter((s: any) => !s.tcGenerated)
+        setClassStudentCount(eligible.length)
+      }
     } catch {
       setClassStudentCount(null)
     }

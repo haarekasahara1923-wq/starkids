@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/app/api/middleware'
 import { prisma } from '@/lib/prisma'
+import { generateClassRollNo } from '@/lib/admitCardHelpers'
 
 export async function GET(req: NextRequest) {
     const { error, user } = requireAuth(req)
@@ -44,18 +45,25 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Required fields missing: Class, Exam Name, Start Date, and End Date are mandatory' }, { status: 400 })
         }
 
+        // Fetch course name for class-wise roll number generation
+        const course = await prisma.course.findFirst({
+            where: { id: courseId, tenantId: user!.tenantId },
+            select: { name: true }
+        })
+
         // Resolved optional batchId
         const resolvedBatchId = batchId && batchId !== 'all' ? batchId : null
 
-        // Get active students in this class/batch
+        // Get active, non-TC students in this class/batch (blocked/inactive & TC generated students excluded)
         const studentWhere: any = {
             tenantId: user!.tenantId,
             courseId,
-            status: 'ACTIVE'
+            status: 'ACTIVE',
+            tcGenerated: false
         }
         if (batchId && batchId !== 'all') {
             const hasBatchStudents = await prisma.student.count({
-                where: { tenantId: user!.tenantId, courseId, batchId, status: 'ACTIVE' }
+                where: { tenantId: user!.tenantId, courseId, batchId, status: 'ACTIVE', tcGenerated: false }
             })
             if (hasBatchStudents > 0) {
                 studentWhere.batchId = batchId
@@ -64,13 +72,15 @@ export async function POST(req: NextRequest) {
 
         const students = await prisma.student.findMany({
             where: studentWhere,
-            select: { id: true }
+            select: { id: true },
+            orderBy: { fullName: 'asc' }
         })
 
         if (students.length === 0) {
-            return NextResponse.json({ error: 'No active students found in this class. Please ensure students are admitted to this class.' }, { status: 400 })
+            return NextResponse.json({ error: 'No eligible active students found in this class (blocked & TC generated students are excluded).' }, { status: 400 })
         }
 
+        const courseName = course?.name || ''
         const event = await prisma.admitCardEvent.create({
             data: {
                 tenantId: user!.tenantId,
@@ -82,9 +92,10 @@ export async function POST(req: NextRequest) {
                 createdBy: user!.userId,
                 timeTable: body.timeTable || [],
                 admitCards: {
-                    create: students.map(s => ({
+                    create: students.map((s, idx) => ({
                         tenantId: user!.tenantId,
-                        studentId: s.id
+                        studentId: s.id,
+                        rollNo: generateClassRollNo(courseName, idx)
                     }))
                 }
             }
